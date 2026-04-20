@@ -1,30 +1,31 @@
-import { test, expect } from '@playwright/test';
-import { LoginPage } from '../../pages/LoginPage';
+import { test, expect } from '@playwright/test'
+import LoginPage from '../../pages/LoginPage.js'
 
+test('login exitoso', async ({ page }) => {
+  const loginPage = new LoginPage(page)
 
-// Test 1 - Login correcto usando Page Object
-test('login en saucedemo', async ({ page }) => {
+  await loginPage.navigate()
 
-  const loginPage = new LoginPage(page);
+  const user = 'standard_user'
+  const password = 'secret_sauce'
 
-  await loginPage.goto();
-  await loginPage.login('standard_user', 'secret_sauce');
+  await loginPage.login(user, password)
 
-  await expect(page.locator('.inventory_list')).toBeVisible();
+  // Esperar a que cargue la página de inventario con timeout corto
+  await expect(page).toHaveURL(/inventory.html/, { timeout: 5000 })
+  await page.locator('.title').waitFor({ state: 'visible', timeout: 5000 })
+})
 
-});
+test('login fallido', async ({ page }) => {
+  const loginPage = new LoginPage(page)
 
+  await loginPage.navigate()
 
-// Test 2 - Login incorrecto (lo dejamos normal por ahora)
-test('login incorrecto muestra error', async ({ page }) => {
+  const user = 'usuario_invalido'
+  const password = 'wrongpass'
 
-  await page.goto('https://www.saucedemo.com/');
+  await loginPage.login(user, password)
 
-  await page.fill('#user-name', 'usuario_falso');
-  await page.fill('#password', '123456');
-
-  await page.click('#login-button');
-
-  await expect(page.locator('[data-test="error"]')).toBeVisible();
-
-});
+  // Esperar a que aparezca el error
+  await expect(loginPage.getErrorMessage()).toBeVisible({ timeout: 5000 })
+})

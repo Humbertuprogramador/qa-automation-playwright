@@ -1,29 +1,45 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test'
+import LoginPage from '../../pages/LoginPage.js'
+import EcommercePage from '../../pages/EcommercePage.js'
 
 test('flujo de compra en ecommerce', async ({ page }) => {
-
   // Login
-  await page.goto('https://www.saucedemo.com/');
-  await page.fill('#user-name', 'standard_user');
-  await page.fill('#password', 'secret_sauce');
-  await page.click('#login-button');
+  const loginPage = new LoginPage(page)
+  await loginPage.navigate()
+  await loginPage.login('standard_user', 'secret_sauce')
+  
+  // Esperar a que cargue inventory
+  const ecommercePage = new EcommercePage(page)
+  await ecommercePage.waitForProductsPage()
+  
+  // Validar título de productos
+  await expect(ecommercePage.getTitle()).toHaveText('Products')
 
-  // Validar que entró
-  await expect(page.locator('.title')).toHaveText('Products');
-
-  // Agregar producto
-  await page.click('.inventory_item button');
+  // Agregar producto al carrito
+  await ecommercePage.addProductToCart(0)
 
   // Ir al carrito
-  await page.click('.shopping_cart_link');
+  await ecommercePage.goToCart()
 
-  // Validar producto en carrito
-  await expect(page.locator('.cart_item')).toBeVisible();
+  // Validar que el producto está en carrito
+  const productInCart = await ecommercePage.verifyProductInCart()
+  expect(productInCart).toBeTruthy()
 
-  // Ir al checkout
-  await page.click('#checkout');
+  // Proceder a checkout
+  await ecommercePage.proceedToCheckout()
 
-  // Validar que está en checkout
-  await expect(page.locator('.title')).toHaveText('Checkout: Your Information');
+  // Completar información de checkout
+  await ecommercePage.fillCheckoutInfo('Juan', 'Pérez', '28001')
 
-});
+  // Continuar
+  await ecommercePage.continueCheckout()
+
+  // Validar resumen de orden
+  await expect(page.locator('.title')).toHaveText('Checkout: Overview')
+
+  // Finalizar compra
+  await ecommercePage.finishOrder()
+
+  // Validar orden completada
+  await expect(page.locator('.title')).toHaveText('Checkout: Complete!')
+})
